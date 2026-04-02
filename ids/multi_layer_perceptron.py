@@ -1,3 +1,4 @@
+import os
 from collections import OrderedDict
 from ids.abstract_model import AbstractModel
 from scores import get_binary_class_scores
@@ -120,6 +121,9 @@ class MultiLayerPerceptron(AbstractModel):
         return with_cpu(predictions).numpy()
 
     def save(self, path):
+        parent = os.path.dirname(path)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
         torch.save(self.model.state_dict(), path)
 
     def load(self, path):

@@ -15,3 +15,5 @@ venv/
 .env
 pip_dependency_tree.txt
 
+organize.txt
+
