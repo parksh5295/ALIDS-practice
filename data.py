@@ -194,6 +194,79 @@ def preprocess(dataframe, normalize=False, remove_classes=['R2L', 'U2R']):
     #attributes = attributes_dataframe.astype(float)
     return attributes, binary_attack_class
 
+def _perturbation_mask_for_columns(columns):
+    """
+    NIDSGAN domain mask (1 = perturbation allowed, 0 = fixed).
+    One-hot expansions of protocol/service/flag and boolean semantics are fixed.
+    """
+    mask = []
+    for col in columns:
+        name = str(col)
+        if name.startswith('protocol_type_') or name.startswith('service_') or name.startswith('flag_'):
+            mask.append(0.0)
+        elif name in ('land', 'logged_in', 'is_host_login', 'is_guest_login'):
+            mask.append(0.0)
+        else:
+            mask.append(1.0)
+    return np.asarray(mask, dtype=np.float32)
+
+def compute_feature_bounds(attributes):
+    """Per-feature min/max for valid-range clipping (NIDSGAN)."""
+    return attributes.min(axis=0).astype(np.float32), attributes.max(axis=0).astype(np.float32)
+
+def preprocess_with_domain_info(dataframe, normalize=False, remove_classes=['R2L', 'U2R'], feat_min=None, feat_max=None):
+    """
+    Same as preprocess, plus perturbation mask and optional feature bounds for NIDSGAN.
+    If feat_min/feat_max are None, bounds are taken from the current dataframe rows.
+    """
+    preprocessed = dataframe
+
+    label_columns = ['class', 'attack_class']
+    categorical_columns = ['protocol_type', 'service', 'flag']
+    boolean_columns = ['land', 'logged_in', 'is_host_login', 'is_guest_login']
+    numeric_columns = list(
+        set(preprocessed.columns)
+      - set(label_columns)
+      - set(categorical_columns)
+      - set(boolean_columns)
+      - set(['difficulty_level'])
+    )
+    categorical_columns = list(set(categorical_columns) & set(preprocessed.columns))
+    label_columns = list(set(label_columns) & set(preprocessed.columns))
+    boolean_columns = list(set(boolean_columns) & set(preprocessed.columns))
+
+    if len(remove_classes) != 0:
+        removed_classes_index = preprocessed[preprocessed['attack_class'].isin(remove_classes)].index
+        preprocessed = preprocessed.drop(index=removed_classes_index).reset_index(drop=True)
+
+    if normalize:
+        training = pd.read_csv('data/KDDTrain.csv', header=None, names=_HEADERS, usecols=numeric_columns)
+        mean = training.mean(axis=0)
+        std = training.std(axis=0)
+        zero_std_columns = std == 0
+        zero_std_columns = zip(zero_std_columns.index, zero_std_columns)
+        zero_std_columns = filter(itemgetter(1), zero_std_columns)
+        zero_std_columns = list(map(itemgetter(0), zero_std_columns))
+        non_zero_std_columns = list(set(numeric_columns) - set(zero_std_columns))
+
+        preprocessed[zero_std_columns] = 0
+        preprocessed[non_zero_std_columns] = (preprocessed[non_zero_std_columns] - mean[non_zero_std_columns]) / std[non_zero_std_columns]
+
+    attributes_dataframe = preprocessed.drop(columns=['class', 'attack_class', 'difficulty_level'])
+    attack_class_dataframe = preprocessed['attack_class']
+
+    attributes_dataframe = pd.get_dummies(attributes_dataframe, columns=categorical_columns)
+
+    perturb_mask = _perturbation_mask_for_columns(attributes_dataframe.columns)
+
+    binary_attack_class = np.zeros_like(attack_class_dataframe, dtype=np.bool_)
+    binary_attack_class[attack_class_dataframe != 'Normal'] = 1
+
+    attributes = attributes_dataframe.to_numpy().astype(float)
+    if feat_min is None or feat_max is None:
+        feat_min, feat_max = compute_feature_bounds(attributes)
+    return attributes, binary_attack_class, perturb_mask, feat_min, feat_max
+
 def split_features(dataframe, selected_attack_class):
     normal = dataframe[dataframe['attack_class'].isin(['Normal'])]
     normal_ff = normal
