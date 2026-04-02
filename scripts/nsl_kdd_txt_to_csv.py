@@ -10,7 +10,7 @@ import sys
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
-# 프로젝트 루트를 path에 넣어 data._HEADERS 사용
+# Add project root to sys.path so we can import data._HEADERS
 _ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
