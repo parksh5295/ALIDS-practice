@@ -1,0 +1,11 @@
+Docker
+docker build -t alids .
+run: docker run --gpus all -it alids
+connect data: docker run --gpus all -it -v ./data:/data alids
+
+pipenv
+bash scripts/setup_pipenv.sh
+export PATH="$HOME/.pyenv/bin:$PATH"
+eval "$(pyenv init -)"
+eval "$(pyenv virtualenv-init -)"
+pipenv shell
