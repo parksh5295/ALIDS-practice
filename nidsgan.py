@@ -259,7 +259,7 @@ class NIDSGAN(object):
                 delta = self.generator(g_in)
                 x_adv, delta_used = self.apply_constraints(x, delta)
 
-                full_adv = self.forward_adv_full(x_nff=None, x_ff=ff, adv_nff=x_adv)
+                full_adv = self.forward_adv_full(ff, x_adv)
                 logits = self.surrogate(full_adv).squeeze(-1)
                 loss_adv = torch.nn.functional.binary_cross_entropy_with_logits(
                     logits, torch.zeros_like(logits), reduction='mean'
