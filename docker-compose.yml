@@ -1,0 +1,17 @@
+# Mount datasets and outputs so containers stay small and data persists on the host.
+services:
+  app:
+    build: .
+    image: alids-practice:local
+    working_dir: /app
+    volumes:
+      - ./data:/app/data
+      - ./saved_models:/app/saved_models
+      - ./results:/app/results
+      - ./logs:/app/logs
+      - ./runs:/app/runs
+      - ./checkpoints:/app/checkpoints
+    stdin_open: true
+    tty: true
+    environment:
+      - PYTHONPATH=/app

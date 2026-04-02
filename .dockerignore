@@ -1,0 +1,23 @@
+.git
+.gitignore
+.cursor
+**/__pycache__
+**/*.py[cod]
+**/*.pyd
+.venv
+venv
+.env
+*.md
+terminals
+.pytest_cache
+.mypy_cache
+.ruff_cache
+
+# Large local artifacts — use volume mounts instead of baking into the image
+data/*.csv
+data/*.txt
+saved_models/**
+results/**
+logs/**
+runs/**
+checkpoints/**
