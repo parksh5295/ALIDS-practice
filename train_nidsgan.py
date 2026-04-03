@@ -104,6 +104,14 @@ def parse_nidsgan_arguments(parser):
     g.add('--lambda_gp', required=False, default=10.0, type=float, help='WGAN-GP coefficient (default 10)')
     g.add('--surrogate_hidden_size', required=False, default=128, type=int, help='must match trained MLP')
     g.add('--surrogate_dropout', required=False, default=0.25, type=float, help='must match trained MLP dropout')
+    g.add(
+        '--eval_ids',
+        required=False,
+        default='all',
+        type=str,
+        help='test_nidsgan only: comma-separated evaluator keys (see test_wgan.IDS_CONFIGS), or "all". '
+        'Example: multi_layer_perceptron only (requires only MLP .pt).',
+    )
 
 
 if __name__ == '__main__':

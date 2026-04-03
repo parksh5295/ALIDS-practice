@@ -12,6 +12,22 @@ from test_wgan import IDS_CONFIGS, get_tester, print_results
 from train_nidsgan import parse_arguments
 
 
+def _ids_configs_for_eval(eval_ids: str):
+    """Subset of IDS_CONFIGS; each entry needs a trained file under configs/*.yaml save_model."""
+    keys = [n for n, _ in IDS_CONFIGS]
+    s = (eval_ids or 'all').strip().lower()
+    if s == 'all':
+        return IDS_CONFIGS
+    wanted = {x.strip() for x in eval_ids.split(',') if x.strip()}
+    out = [(n, p) for n, p in IDS_CONFIGS if n in wanted]
+    if not out:
+        raise SystemExit(f'--eval_ids: no match for {eval_ids!r}. Valid keys: {keys}')
+    missing = wanted - {n for n, _ in out}
+    if missing:
+        raise SystemExit(f'--eval_ids: unknown keys {missing}. Valid keys: {keys}')
+    return out
+
+
 def main():
     options = parse_arguments()
     functional_features, non_functional_features, normal_ff, normal_nff = split_features(
@@ -40,8 +56,9 @@ def main():
     adversarial = model.generate(adversarial_nff, adversarial_ff).detach().cpu().numpy()
     data = reassemble(options.attack, adversarial, adversarial_ff, nor_nff, nor_ff)
     labels = np.concatenate((labels_mal, labels_nor), axis=0)
+    ids_configs = _ids_configs_for_eval(getattr(options, 'eval_ids', 'all'))
     tester = get_tester(options.attack, data, labels)
-    results = list(map(tester, IDS_CONFIGS))
+    results = list(map(tester, ids_configs))
     results_dir = os.path.join(os.getcwd(), 'results')
     os.makedirs(results_dir, exist_ok=True)
     with open(os.path.join(results_dir, f'{options.name}_nidsgan.csv'), 'w') as result_file:
