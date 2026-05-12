@@ -10,6 +10,7 @@ from optuna.samplers import TPESampler, CmaEsSampler, PartialFixedSampler, NSGAI
 
 import os
 import argparse
+from pathlib import Path
 import matplotlib.pyplot as plt
 
 from sklearn.model_selection import train_test_split
@@ -24,6 +25,12 @@ from torch.utils.data import TensorDataset, DataLoader
 from dnn_adv import train, evaluate
 from gan_adv import compute_class_ranges, train_gan
 import pdb
+
+
+BASE_DIR = Path(__file__).resolve().parent
+DATASET_PATH = BASE_DIR / "dataset" / "NF-ToN-IoT-v3_processed_reduced.csv"
+RESULTS_DIR = BASE_DIR / "results"
+CM_DIR = RESULTS_DIR / "cm"
 
 
 def main(args):
@@ -52,8 +59,9 @@ def main(args):
     #     exit()
 
     # data preprocessing - NF-ToN-IoT-v3
-    filename = 'dataset/NF-ToN-IoT-v3_processed_reduced.csv'
-    data = pd.read_csv(filename)
+    data = pd.read_csv(DATASET_PATH)
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    CM_DIR.mkdir(parents=True, exist_ok=True)
     # data = data_full.sample(frac=0.1, random_state=42)
 
     features = data.drop(columns=['Label', 'Attack'])
@@ -148,14 +156,13 @@ def main(args):
 
         plt.xticks(rotation=45, ha='right')
         plt.tight_layout()
-        os.makedirs("cm", exist_ok=True)
-        plt.savefig(f"cm/original{suffix}.png", dpi=300, bbox_inches='tight')
+        plt.savefig(CM_DIR / f"original{suffix}.png", dpi=300, bbox_inches='tight')
         plt.close()
 
 
     print("\n--- Starting Adversarial Attacks ---")
 
-    with open(f'summary_WB.txt', 'w', buffering=1) as f:
+    with open(RESULTS_DIR / 'summary_WB.txt', 'w', buffering=1) as f:
         f.write(f"Original Model: accuracy={report_dict['accuracy']*100:.2f}%, precision={report_dict['macro avg']['precision']*100:.2f}%, recall={report_dict['macro avg']['recall']*100:.2f}%, f1={report_dict['macro avg']['f1-score']*100:.2f}%\n\n")
         f.write("=== Summary ===\n")
         
@@ -216,7 +223,7 @@ def main(args):
         adv_test_df = pd.DataFrame(x_adv_test.detach().cpu().numpy(), columns=columns)
         adv_test_label = le.inverse_transform(y_test)
         adv_test_df['label'] = adv_test_label
-        adv_test_df.to_csv(f"adversarial_samples.csv", index=False)
+        adv_test_df.to_csv(RESULTS_DIR / "adversarial_samples.csv", index=False)
 
         adv_test_data = TensorDataset(x_adv_test, torch.from_numpy(y_test).long())
         adv_test_loader = DataLoader(adv_test_data, batch_size=attack_batch, shuffle=False)
@@ -250,7 +257,7 @@ def main(args):
 
             plt.xticks(rotation=45, ha='right')
             plt.tight_layout()
-            plt.savefig(f"cm/adversarial{suffix}.png", dpi=300, bbox_inches='tight')
+            plt.savefig(CM_DIR / f"adversarial{suffix}.png", dpi=300, bbox_inches='tight')
             plt.close()
 
 if __name__ == "__main__":
