@@ -11,6 +11,7 @@ REQ_FILE="${PROJECT_ROOT}/requirements.txt"
 
 PYTHON_VERSION="${PYTHON_VERSION:-3.11.1}"
 PIPENV_VERSION="${PIPENV_VERSION:-2024.1.0}"
+INSTALL_TORCH="${INSTALL_TORCH:-1}"
 
 export PIPENV_TIMEOUT="${PIPENV_TIMEOUT:-100}"
 export PIPENV_MAX_RETRIES="${PIPENV_MAX_RETRIES:-5}"
@@ -18,6 +19,38 @@ export PIPENV_SKIP_LOCK="${PIPENV_SKIP_LOCK:-1}"
 
 # Set AGGRESSIVE_CLEAN=1 to also wipe ~/.local/share/virtualenvs and global pip/pipenv caches (dangerous on shared machines).
 AGGRESSIVE_CLEAN="${AGGRESSIVE_CLEAN:-0}"
+
+detect_torch_index_url() {
+  if [[ -n "${TORCH_INDEX_URL:-}" ]]; then
+    echo "${TORCH_INDEX_URL}"
+    return
+  fi
+
+  local cuda_version=""
+  if command -v nvidia-smi >/dev/null 2>&1; then
+    cuda_version="$(nvidia-smi 2>/dev/null | sed -n 's/.*CUDA Version: \([0-9]\+\.[0-9]\+\).*/\1/p' | head -n 1)"
+  fi
+
+  if [[ -z "${cuda_version}" ]]; then
+    echo "https://download.pytorch.org/whl/cpu"
+    return
+  fi
+
+  local major="${cuda_version%%.*}"
+  local minor="${cuda_version#*.}"
+
+  if (( major > 12 || (major == 12 && minor >= 8) )); then
+    echo "https://download.pytorch.org/whl/cu128"
+  elif (( major == 12 && minor >= 6 )); then
+    echo "https://download.pytorch.org/whl/cu126"
+  elif (( major == 12 && minor >= 4 )); then
+    echo "https://download.pytorch.org/whl/cu124"
+  elif (( major == 12 && minor >= 1 )); then
+    echo "https://download.pytorch.org/whl/cu121"
+  else
+    echo "https://download.pytorch.org/whl/cpu"
+  fi
+}
 
 echo "[0] Cleaning existing project pipenv / Pipfile..."
 cd "${PROJECT_ROOT}"
@@ -84,9 +117,22 @@ else
   exit 1
 fi
 
+if [[ "${INSTALL_TORCH}" == "1" ]]; then
+  TORCH_INDEX="$(detect_torch_index_url)"
+  echo "[7] Installing PyTorch from ${TORCH_INDEX}..."
+  pyenv exec pipenv run python -m pip uninstall -y torch torchvision torchaudio >/dev/null 2>&1 || true
+  pyenv exec pipenv run python -m pip install torch --index-url "${TORCH_INDEX}"
+  pyenv exec pipenv run python - <<'PY'
+import torch
+print(f"    torch={torch.__version__}, torch_cuda={torch.version.cuda}, cuda_available={torch.cuda.is_available()}")
+PY
+else
+  echo "[7] Skipping PyTorch install (INSTALL_TORCH=0)."
+fi
+
 # 8. Optional dependency check
 echo ""
-echo "[7] pipdeptree (optional conflict hints)..."
+echo "[8] pipdeptree (optional conflict hints)..."
 if pyenv exec pipenv run python -m pip install --quiet pipdeptree 2>/dev/null; then
   TMP_OUT="$(mktemp)"
   pyenv exec pipenv run pipdeptree --warn silence > "${TMP_OUT}" 2>/dev/null || true
