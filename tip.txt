@@ -9,4 +9,13 @@ chmod +x scripts/setup_pipenv.sh
 export PATH="$HOME/.pyenv/bin:$PATH"
 eval "$(pyenv init -)"
 eval "$(pyenv virtualenv-init -)"
-pipenv shell
+# pipenv shell
+pyenv exec pipenv run python adversarial_attack_generation/main_adv.py
+
+cuda check
+pipenv run python -c "import torch; print(torch.__version__); print(torch.version.cuda); print(torch.cuda.is_available())"
+>>>
+2.x.x+cu128
+12.8
+True
+

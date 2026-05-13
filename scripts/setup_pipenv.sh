@@ -16,6 +16,7 @@ INSTALL_TORCH="${INSTALL_TORCH:-1}"
 export PIPENV_TIMEOUT="${PIPENV_TIMEOUT:-100}"
 export PIPENV_MAX_RETRIES="${PIPENV_MAX_RETRIES:-5}"
 export PIPENV_SKIP_LOCK="${PIPENV_SKIP_LOCK:-1}"
+export PIPENV_IGNORE_VIRTUALENVS="${PIPENV_IGNORE_VIRTUALENVS:-1}"
 
 # Set AGGRESSIVE_CLEAN=1 to also wipe ~/.local/share/virtualenvs and global pip/pipenv caches (dangerous on shared machines).
 AGGRESSIVE_CLEAN="${AGGRESSIVE_CLEAN:-0}"
@@ -151,5 +152,5 @@ fi
 
 echo ""
 echo "Done. Pipenv environment is ready."
-echo "  Shell:  cd ${PROJECT_ROOT} && pyenv exec pipenv shell"
+echo "  Shell:  cd ${PROJECT_ROOT} && bash scripts/pipenv_shell.sh"
 echo "  Run:    pyenv exec pipenv run python train_ids.py --config configs/multi_layer_perceptron.yaml"
